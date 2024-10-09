@@ -1,0 +1,9 @@
+# svn
+.svn
+
+# visual studio
+.vs
+**/Debug/*
+**/Release/*
+
+.idea
