@@ -4,7 +4,7 @@
 	<TBcState>
 		<FirstStartup Value="False"/>
 		<FormPositions>
-			<TView Value="-209;0;1920;1030;;120"/>
+			<TView Value="-209;0;1920;1030;3;120"/>
 			<TViewFrame Value="165;70;1797;945;;119"/>
 		</FormPositions>
 	</TBcState>

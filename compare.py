@@ -23,7 +23,7 @@ from PySide2.QtWidgets import (
 from PySide2.QtCore import QThread, Signal
 from PySide2.QtGui import QDragEnterEvent, QTextCursor, QIcon, QFont, QGuiApplication
 
-__version__ = "v1.0.0 by lhy"
+__version__ = "v1.0.1 by lhy"
 en_out_file = "en.txt"
 cn_out_file = "cn.txt"
 
@@ -31,6 +31,10 @@ if getattr(sys, "frozen", False):
     beyond_compare_name = os.path.join(sys._MEIPASS, "BCompare\BCompare.exe")
 else:
     beyond_compare_name = "BCompare\BCompare.exe"
+
+
+def get_file_name(target):
+    return os.path.basename(target)
 
 
 def get_current_file_path():
@@ -72,10 +76,49 @@ class FileComparator(QThread):
         self.file1 = file1
         self.file2 = file2
 
+    def convert_docx_to_doc(self, docx_path):
+        """
+        将 .docx 文件转换为 .doc 格式，并返回新的文件路径。
+        """
+        self.log_signal.emit(f"正在转换为doc格式，路径为：【{docx_path}】 ")
+        # 初始化 Word 应用程序
+        word = win32com.client.Dispatch("Word.Application")
+        word.Visible = False  # 不显示 Word 窗口
+
+        docx_path = os.path.normpath(docx_path)
+        # 打开 .docx 文件
+        doc = word.Documents.Open(docx_path)
+
+        # 获取转换后的文件路径（将 .docx 后缀替换为 .doc）
+        doc_path = docx_path.replace(".docx", ".doc")
+
+        try:
+            # 另存为 .doc 格式，FileFormat=0 对应 .doc 格式
+            doc.SaveAs(doc_path, FileFormat=0)
+            self.log_signal.emit(
+                f"已将【{get_file_name(docx_path)}】转换为【{get_file_name(doc_path)}】"
+            )
+        except Exception as e:
+            self.log_signal.emit(f"转换失败: {e}")
+        finally:
+            # 关闭文档并退出 Word 应用
+            doc.Close(False)
+            word.Quit()
+            sleep(5)
+
+        return doc_path
+
     def run(self):
         # 初始化 COM 库
         pythoncom.CoInitialize()
-        self.log_signal.emit(f"开始比较文件:\n{self.file1}\n和\n{self.file2}")
+        # 如果文件是 .docx 格式，先转换为 .doc 格式
+        if self.file1.endswith(".docx"):
+            self.file1 = self.convert_docx_to_doc(self.file1)
+
+        if self.file2.endswith(".docx"):
+            self.file2 = self.convert_docx_to_doc(self.file2)
+
+        self.log_signal.emit(f"开始比较文件")
         try:
             # 读取中英文文档中的表格数据
             self.read_table_data(self.file1, en_out_file)
@@ -110,7 +153,7 @@ class FileComparator(QThread):
 
         doc = None
         try:
-            doc_path = os.path.join(get_current_file_path(), doc_path)
+            doc_path = os.path.normpath(doc_path)
             doc = word.Documents.Open(doc_path)
             table_data = []
 
@@ -147,6 +190,7 @@ class FileComparator(QThread):
 
         except Exception as e:
             self.log_signal.emit(f"打开文档时出错: {e}")
+            print(f"打开文档时出错: {e}")
             return []
 
         finally:
@@ -191,7 +235,9 @@ class FileComparisonApp(QWidget):
 
         file1_layout = QHBoxLayout()
         self.file1_path = QLineEdit(self)
-        self.file1_path.setPlaceholderText("拖动.doc文件到此处或点击浏览按钮选择文件")
+        self.file1_path.setPlaceholderText(
+            "拖动.doc或.docx文件到此处或点击浏览按钮选择文件"
+        )
         self.file1_path.setAcceptDrops(True)
         self.file1_path.dragEnterEvent = self.dragEnterEvent
         self.file1_path.dropEvent = self.dropEvent_file1
@@ -210,7 +256,9 @@ class FileComparisonApp(QWidget):
 
         file2_layout = QHBoxLayout()
         self.file2_path = QLineEdit(self)
-        self.file2_path.setPlaceholderText("拖动.doc文件到此处或点击浏览按钮选择文件")
+        self.file2_path.setPlaceholderText(
+            "拖动.doc或.docx文件到此处或点击浏览按钮选择文件"
+        )
         self.file2_path.setAcceptDrops(True)
         self.file2_path.dragEnterEvent = self.dragEnterEvent
         self.file2_path.dropEvent = self.dropEvent_file2
@@ -226,7 +274,7 @@ class FileComparisonApp(QWidget):
         self.log_box = QTextEdit(self)
         self.log_box.setReadOnly(True)
         self.log_box.setStyleSheet(
-            "font-family: Courier New; background-color: #f0f0f0;"
+            "font-family: Courier New; background-color: #f0f0f0;font-size: 14;"
         )
         layout.addWidget(self.log_box)
 
@@ -252,14 +300,14 @@ class FileComparisonApp(QWidget):
         QMessageBox.warning(self, "错误", message)
 
     def dragEnterEvent(self, event: QDragEnterEvent):
-        """仅接受 .doc 文件的拖拽"""
+        """接受 .doc 和 .docx 文件的拖拽"""
         mime_data = event.mimeData()
         if mime_data.hasUrls():
             url = mime_data.urls()[0].toLocalFile()
-            if url.endswith(".doc"):
+            if url.endswith(".doc") or url.endswith(".docx"):
                 event.acceptProposedAction()
             else:
-                self.show_error_message(f"拒绝文件：{url}（仅支持 .doc 文件）")
+                self.show_error_message(f"拒绝文件：{url}（仅支持 .doc 和 .docx 文件）")
                 event.ignore()
         else:
             event.ignore()
@@ -267,24 +315,24 @@ class FileComparisonApp(QWidget):
     def dropEvent_file1(self, event):
         """处理英文文件的拖放事件"""
         file_path = event.mimeData().urls()[0].toLocalFile()
-        if file_path.endswith(".doc"):
+        if file_path.lower().endswith(".doc") or file_path.lower().endswith(".docx"):
             self.file1_path.setText(file_path)
             self.log_message(f"英文文件已选择：{file_path}")
         else:
-            self.show_error_message(f"拒绝文件：{file_path}（仅支持 .doc 文件）")
+            self.show_error_message(f"拒绝文件：{file_path}（支持 .doc和.docx 文件）")
 
     def dropEvent_file2(self, event):
         """处理中文文件的拖放事件"""
         file_path = event.mimeData().urls()[0].toLocalFile()
-        if file_path.endswith(".doc"):
+        if file_path.lower().endswith(".doc") or file_path.lower().endswith(".docx"):
             self.file2_path.setText(file_path)
             self.log_message(f"中文文件已选择：{file_path}")
         else:
-            self.show_error_message(f"拒绝文件：{file_path}（仅支持 .doc 文件）")
+            self.show_error_message(f"拒绝文件：{file_path}（支持 .doc和.docx 文件）")
 
     def select_file1(self):
         file1, _ = QFileDialog.getOpenFileName(
-            self, "选择英文文件", "", "Word 文档 (*.doc)"
+            self, "选择英文文件", "", "Word 文档 (*.doc *.docx)"
         )
         if file1:
             self.file1_path.setText(file1)
@@ -292,7 +340,7 @@ class FileComparisonApp(QWidget):
 
     def select_file2(self):
         file2, _ = QFileDialog.getOpenFileName(
-            self, "选择中文文件", "", "Word 文档 (*.doc)"
+            self, "选择中文文件", "", "Word 文档 (*.doc *.docx)"
         )
         if file2:
             self.file2_path.setText(file2)
@@ -300,13 +348,13 @@ class FileComparisonApp(QWidget):
 
     def start_comparison(self):
         self.log_box.clear()
+        self.log_message("开始处理...")
+        write_file([], en_out_file)
+        write_file([], cn_out_file)
+        self.log_message("清空输出文件...")
 
         file1 = self.file1_path.text()
         file2 = self.file2_path.text()
-
-        if not file1.endswith(".doc") or not file2.endswith(".doc"):
-            self.show_error_message("请确保两个文件都是 .doc 格式！")
-            return
 
         # 禁用比较按钮
         self.compare_button.setEnabled(False)
@@ -316,11 +364,10 @@ class FileComparisonApp(QWidget):
         self.comparator_thread.log_signal.connect(self.log_message)
         self.comparator_thread.finished_signal.connect(self.comparison_finished)
         self.comparator_thread.error_signal.connect(self.show_error_message)
-
         self.comparator_thread.start()  # 启动线程
 
     def comparison_finished(self):
-        self.log_message("比较线程已完成。")
+        # self.log_message("比较线程已完成。")
         # 恢复比较按钮
         self.compare_button.setEnabled(True)
 
@@ -351,5 +398,8 @@ if __name__ == "__main__":
     # 设置程序的图标
     app.setWindowIcon(QIcon(icon_path))
     ex = FileComparisonApp()
-    ex.show()
+    # 默认最大化窗口
+    ex.showMaximized()
+    ex.raise_()  # 提升窗口到最前
+    ex.activateWindow()  # 激活窗口
     sys.exit(app.exec_())
