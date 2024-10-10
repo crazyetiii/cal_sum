@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Produced by Beyond Compare 5 from Scooter Software -->
+<BCState Version="2" MinVersion="2">
+	<TBcState>
+		<FirstStartup Value="False"/>
+		<FormPositions>
+			<TView Value="-209;0;1920;1030;;120"/>
+			<TViewFrame Value="165;70;1797;945;;119"/>
+		</FormPositions>
+	</TBcState>
+	<TDirCompareState>
+		<LogHeight Value="0"/>
+		<ShowToolbar Value="False"/>
+	</TDirCompareState>
+	<THomeState>
+		<SessionType Value="TTextCompareSession"/>
+	</THomeState>
+	<TTextCompareState>
+		<LeftMRUSpecs>
+			<_0 Value="C:\Users\Administrator\Desktop\cal_sum\en.txt"/>
+		</LeftMRUSpecs>
+		<MRUFonts>
+			<_0 Value="Consolas;10;;;F"/>
+		</MRUFonts>
+		<RightMRUSpecs>
+			<_0 Value="C:\Users\Administrator\Desktop\cal_sum\cn.txt"/>
+		</RightMRUSpecs>
+	</TTextCompareState>
+</BCState>

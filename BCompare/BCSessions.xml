@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Produced by Beyond Compare 5 from Scooter Software -->
+<BCSessions Version="2" MinVersion="2">
+	<TSessionFolder>
+		<Items>
+			<TSessionFolder>
+				<Items>
+					<TTextCompareSession Value="en.txt &lt;--> cn.txt">
+						<LastModified Value="2024-10-10 15:14:34"/>
+						<Specs>
+							<Left Value="C:\Users\Administrator\Desktop\cal_sum\en.txt"/>
+							<Right Value="C:\Users\Administrator\Desktop\cal_sum\cn.txt"/>
+						</Specs>
+					</TTextCompareSession>
+				</Items>
+			</TSessionFolder>
+		</Items>
+	</TSessionFolder>
+</BCSessions>
