@@ -20,10 +20,17 @@ from PySide2.QtWidgets import (
     QTextEdit,
     QMessageBox,
 )
-from PySide2.QtCore import QThread, Signal
-from PySide2.QtGui import QDragEnterEvent, QTextCursor, QIcon, QFont, QGuiApplication
+from PySide2.QtCore import QThread, Signal, Qt
+from PySide2.QtGui import (
+    QDragEnterEvent,
+    QTextCursor,
+    QIcon,
+    QFont,
+    QGuiApplication,
+    QDropEvent,
+)
 
-__version__ = "v1.0.1 by lhy"
+__version__ = "v1.0.3 by lhy"
 en_out_file = "en.txt"
 cn_out_file = "cn.txt"
 
@@ -31,6 +38,25 @@ if getattr(sys, "frozen", False):
     beyond_compare_name = os.path.join(sys._MEIPASS, "BCompare\BCompare.exe")
 else:
     beyond_compare_name = "BCompare\BCompare.exe"
+
+default_keywords_config = {
+    "chinese": ["中文", "chinese"],
+    "english": ["英文", "english"],
+}
+
+
+def load_keywords_config():
+    """从外部文件加载关键词配置"""
+    config_path = os.path.join(get_current_file_path(), "compare.json")
+    if os.path.exists(config_path):
+        with open(config_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    else:
+        # 如果配置文件不存在，则创建它并写入默认配置
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(default_keywords_config, f, ensure_ascii=False, indent=4)
+            print(f"配置文件已创建：{config_path}")
+        return default_keywords_config  # 返回默认配置
 
 
 def get_file_name(target):
@@ -48,7 +74,7 @@ def get_current_file_path():
 
 def matches_parentheses(s):
     # 匹配以左小括号开始和右小括号结束的字符串
-    pattern = r"^\(.*\)$"
+    pattern = r"^\(.*$"
     return bool(re.match(pattern, s))
 
 
@@ -208,6 +234,7 @@ class FileComparisonApp(QWidget):
         super().__init__()
         self.initUI()
         self.comparator_thread = None  # 初始化线程
+        load_keywords_config()  # 没有配置文件时,在这里创建
 
     def initUI(self):
         # 获取屏幕的可用几何信息
@@ -290,6 +317,57 @@ class FileComparisonApp(QWidget):
         # 设置窗口
         self.setWindowTitle(f"Doc中英文比较工具 {__version__}")
 
+        # 启用窗口的拖拽功能
+        self.setAcceptDrops(True)
+
+    def dragEnterEvent(self, event: QDragEnterEvent):
+        """拖拽进入事件，检查是否拖入了有效的文件类型"""
+        mime_data = event.mimeData()
+        if mime_data.hasUrls():
+            urls = mime_data.urls()
+            if all(
+                url.toLocalFile().lower().endswith((".doc", ".docx")) for url in urls
+            ):
+                event.acceptProposedAction()
+                event.setDropAction(Qt.CopyAction)  # 设置为拷贝操作
+            else:
+                self.show_error_message("仅支持 .doc 和 .docx 文件")
+                event.ignore()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event: QDropEvent):
+        """处理文件拖放事件"""
+        files = [url.toLocalFile() for url in event.mimeData().urls()]
+        self.keywords = load_keywords_config()
+
+        # 只接受两个文件
+        if len(files) != 2:
+            self.show_error_message("只允许拖动两个文件哦~~~")
+            return
+
+        chinese_file = None
+        english_file = None
+
+        for file_path in files:
+            file_name = os.path.basename(file_path).lower()
+
+            if any(kw in file_name for kw in self.keywords["chinese"]):
+                if chinese_file is None:
+                    chinese_file = file_path
+                    self.file2_path.setText(file_path)  # 设置中文文件路径
+                    self.log_message(f"中文文件自动识别：{file_path}")
+            elif any(kw in file_name for kw in self.keywords["english"]):
+                if english_file is None:
+                    english_file = file_path
+                    self.file1_path.setText(file_path)  # 设置英文文件路径
+                    self.log_message(f"英文文件自动识别：{file_path}")
+
+        if chinese_file is None:
+            self.show_error_message("未选择中文文件，请检查文件名是否包含正确的关键词")
+        if english_file is None:
+            self.show_error_message("未选择英文文件，请检查文件名是否包含正确的关键词")
+
     def log_message(self, message):
         """将消息写入日志框"""
         self.log_box.append(message)
@@ -364,6 +442,10 @@ class FileComparisonApp(QWidget):
         self.comparator_thread.log_signal.connect(self.log_message)
         self.comparator_thread.finished_signal.connect(self.comparison_finished)
         self.comparator_thread.error_signal.connect(self.show_error_message)
+        # self.comparator_thread.read_table_data(
+        #     r"C:\Users\Administrator\Desktop\cal_sum\08兰妮比加利审计报告-英文附注 2022-0330.doc",
+        #     "en.txt",
+        # )
         self.comparator_thread.start()  # 启动线程
 
     def comparison_finished(self):

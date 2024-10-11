@@ -6,7 +6,7 @@
 			<TSessionFolder>
 				<Items>
 					<TTextCompareSession Value="en.txt &lt;--> cn.txt">
-						<LastModified Value="2024-10-10 19:13:12"/>
+						<LastModified Value="2024-10-11 09:17:30"/>
 						<Specs>
 							<Left Value="C:\Users\Administrator\Desktop\cal_sum\en.txt"/>
 							<Right Value="C:\Users\Administrator\Desktop\cal_sum\cn.txt"/>
