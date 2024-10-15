@@ -30,7 +30,7 @@ from PySide2.QtGui import (
     QDropEvent,
 )
 
-__version__ = "v1.0.3 by lhy"
+__version__ = "v1.0.4 by lhy"
 en_out_file = "en.txt"
 cn_out_file = "cn.txt"
 
@@ -352,12 +352,14 @@ class FileComparisonApp(QWidget):
         for file_path in files:
             file_name = os.path.basename(file_path).lower()
 
-            if any(kw in file_name for kw in self.keywords["chinese"]):
+            if any(kw.lower() in file_name.lower() for kw in self.keywords["chinese"]):
                 if chinese_file is None:
                     chinese_file = file_path
                     self.file2_path.setText(file_path)  # 设置中文文件路径
                     self.log_message(f"中文文件自动识别：{file_path}")
-            elif any(kw in file_name for kw in self.keywords["english"]):
+            elif any(
+                kw.lower() in file_name.lower() for kw in self.keywords["english"]
+            ):
                 if english_file is None:
                     english_file = file_path
                     self.file1_path.setText(file_path)  # 设置英文文件路径
@@ -481,7 +483,7 @@ if __name__ == "__main__":
     app.setWindowIcon(QIcon(icon_path))
     ex = FileComparisonApp()
     # 默认最大化窗口
-    ex.showMaximized()
+    ex.showNormal()
     ex.raise_()  # 提升窗口到最前
     ex.activateWindow()  # 激活窗口
     sys.exit(app.exec_())
